@@ -1,0 +1,16 @@
+services:
+  letshookup_db:
+    image: postgres
+    restart: always
+    container_name: letshookup_db
+    environment:
+      POSTGRES_USER: odin
+      POSTGRES_PASSWORD: DevPassword**647**VerySecured!
+      POSTGRES_DB: letshookup_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - letshookup_dbdata:/var/lib/postgresql/data
+
+volumes:
+  letshookup_dbdata:
