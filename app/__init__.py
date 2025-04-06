@@ -5,6 +5,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
+from flask_socketio import SocketIO
 
 load_dotenv()
 
@@ -22,9 +23,12 @@ cors = CORS(app, supports_credentials=True, origins = os.getenv("CORS_ACCEPTED_U
 
 db = SQLAlchemy(app)
 
-from app import models, controllers
+socketio = SocketIO(cors_allowed_origins=os.getenv("CORS_ACCEPTED_URI").split(','))
+socketio.init_app(app)
+
+from app import models, controllers, sockets
+
+migrate = Migrate(app, db)
 
 with app.app_context():
   db.create_all()
-
-migrate = Migrate(app, db)
