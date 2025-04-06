@@ -4,7 +4,7 @@ from app.models.UserModel import User
 from app import db
 from app.schema.UserSchema import UserSchemaRegister, UserSchemaLogin
 from marshmallow import ValidationError
-from app.service.AuthService import generate_tokens
+from app.service.AuthService import generate_tokens_and_create_cookie, refresh_access_token_and_update_cookie, try_parse_token_user_id
 import jwt
 import datetime
 from flask import current_app
@@ -36,7 +36,10 @@ def register():
   db.session.add(new_user)
   db.session.commit()
 
-  return jsonify({"message": "User registered successfully"}), 201
+  response = make_response('', 201)
+  generate_tokens_and_create_cookie(response, new_user.id)
+
+  return response
 
 @auth_bp.route("/auth/login", methods=["POST"])
 def login():
@@ -53,55 +56,21 @@ def login():
   user = User.query.filter_by(email=email).first()
   if user is None or not user.check_password(password):
     return jsonify({"error": "Invalid credentials"}), 401
-  
-  access_token, refresh_token = generate_tokens(user.id)
 
-  userDto = { "id": user.id, "email": user.email }
-
-  response = make_response(jsonify(userDto))
-  
-  # Ajouter le token dans un cookie HTTPOnly sécurisé
-  response.set_cookie(
-    'access_token',
-    access_token,
-    httponly=True,
-    secure=os.getenv('ENABLE_HTTPS') is 'True',
-    samesite='Strict',
-    max_age=900
-  )
-
-  response.set_cookie(
-    'refresh_token',
-    refresh_token,
-    httponly=True,
-    secure=os.getenv('ENABLE_HTTPS') is 'True',
-    samesite='Strict',
-    max_age=604800
-  )
+  response = make_response('')
+  generate_tokens_and_create_cookie(response, user.id)
 
   return response
 
 @auth_bp.get('/auth/refresh')
 def refresh_auth_token():
   refresh_token = request.cookies.get('refresh_token')
-  print(refresh_token)
-  if not refresh_token:
-    return jsonify({'message': 'Bad credentials'}), 401
-  
-  try:
-    payload = jwt.decode(refresh_token, current_app.config['SECRET_KEY'], algorithms=['HS256'])
-    user_id = payload['sub']
-  except jwt.ExpiredSignatureError:
-    return jsonify({'message': 'Refresh token expired'}), 401
-  except jwt.InvalidTokenError:
-    return jsonify({'message': 'Invalid token'}), 401
-  
-  new_access_token = jwt.encode({
-    'sub': user_id,
-    'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=15)
-  }, current_app.config['SECRET_KEY'], algorithm='HS256')
+  user_id = try_parse_token_user_id(refresh_token)
 
-  response = make_response(jsonify({'message': 'Access token refreshed'}))
-  response.set_cookie('access_token', new_access_token, httponly=True, secure=os.getenv('ENABLE_HTTPS') is 'True', samesite='Strict', max_age=900)
+  if not user_id:
+    return '', 401
+
+  response = make_response('')
+  refresh_access_token_and_update_cookie(response, user_id)
 
   return response
