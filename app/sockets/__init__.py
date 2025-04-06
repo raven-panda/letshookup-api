@@ -1,1 +1,1 @@
-#from app.sockets import ChatEvents
+from app.sockets import ChatEvents
