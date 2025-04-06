@@ -1,13 +1,11 @@
-import os
 from flask import Blueprint, request, jsonify, make_response
 from app.models.UserModel import User
 from app import db
 from app.schema.UserSchema import UserSchemaRegister, UserSchemaLogin
 from marshmallow import ValidationError
 from app.service.AuthService import generate_tokens_and_create_cookie, refresh_access_token_and_update_cookie, try_parse_token_user_id
-import jwt
-import datetime
 from flask import current_app
+from sqlalchemy.exc import DatabaseError
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -24,17 +22,15 @@ def register():
   email = data.get("email")
   password = data.get("password")
 
-  if not username or not password:
-    return jsonify({"error": "Missing username or password"}), 400
-
-  if User.query.filter_by(username=username).first():
-    return jsonify({"error": "User already exists"}), 409
-
   new_user = User(username=username, email=email)
   new_user.set_password(password)
 
   db.session.add(new_user)
-  db.session.commit()
+  
+  try:
+    db.session.commit()
+  except DatabaseError as e:
+    return '', 500
 
   response = make_response('', 201)
   generate_tokens_and_create_cookie(response, new_user.id)
