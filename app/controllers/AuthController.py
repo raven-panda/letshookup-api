@@ -3,8 +3,7 @@ from app.models.UserModel import User
 from app import db
 from app.schema.UserSchema import UserSchemaRegister, UserSchemaLogin
 from marshmallow import ValidationError
-from app.service.AuthService import generate_tokens_and_create_cookie, refresh_access_token_and_update_cookie, try_parse_token_user_id
-from flask import current_app
+from app.service.AuthService import generate_tokens_and_create_cookie, refresh_access_token_and_update_cookie, try_parse_token_user_id, clear_auth_cookies
 from sqlalchemy.exc import DatabaseError
 
 auth_bp = Blueprint("auth", __name__)
@@ -56,6 +55,12 @@ def login():
   response = make_response('')
   generate_tokens_and_create_cookie(response, user.id)
 
+  return response
+
+@auth_bp.route("/auth/logout", methods=["GET"])
+def logout():
+  response = make_response('', 200)
+  clear_auth_cookies(response)
   return response
 
 @auth_bp.get('/auth/refresh')

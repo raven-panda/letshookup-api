@@ -66,3 +66,7 @@ def try_parse_token_user_id(refresh_token):
     return None
   
   return user_id
+
+def clear_auth_cookies(response: Response):
+  response.set_cookie('refresh_token', '', expires=0)
+  response.set_cookie('access_token', '', expires=0)
