@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, make_response
 from app.models.UserModel import User
 from app import db
 from app.schema.UserSchema import UserSchemaRegister, UserSchemaLogin
-from marshmallow import ValidationError
+from werkzeug.exceptions import Unauthorized, InternalServerError
 from app.service.AuthService import generate_tokens_and_create_cookie, refresh_access_token_and_update_cookie, try_parse_token_user_id, clear_auth_cookies
 from sqlalchemy.exc import DatabaseError
 
@@ -12,10 +12,7 @@ auth_bp = Blueprint("auth", __name__)
 def register():
   schema = UserSchemaRegister()
 
-  try:
-    data = schema.load(request.json)
-  except ValidationError as err:
-    return jsonify({"errors": err.messages}), 400
+  data = schema.load(request.json)
 
   username = data.get("username")
   email = data.get("email")
@@ -29,7 +26,7 @@ def register():
   try:
     db.session.commit()
   except DatabaseError as e:
-    return '', 500
+    raise InternalServerError()
 
   response = make_response('', 201)
   generate_tokens_and_create_cookie(response, new_user.id)
@@ -39,18 +36,14 @@ def register():
 @auth_bp.route("/auth/login", methods=["POST"])
 def login():
   schema = UserSchemaLogin()
-
-  try:
-    data = schema.load(request.json)
-  except ValidationError as err:
-    return jsonify({"errors": err.messages}), 400
+  data = schema.load(request.json)
   
   email = data.get("email")
   password = data.get("password")
 
   user = User.query.filter_by(email=email).first()
   if user is None or not user.check_password(password):
-    return jsonify({"error": "Invalid credentials"}), 401
+    raise Unauthorized()
 
   response = make_response('')
   generate_tokens_and_create_cookie(response, user.id)
@@ -69,7 +62,7 @@ def refresh_auth_token():
   user_id = try_parse_token_user_id(refresh_token)
 
   if not user_id:
-    return '', 401
+    raise Unauthorized()
 
   response = make_response('')
   refresh_access_token_and_update_cookie(response, user_id)
