@@ -59,12 +59,17 @@ def logout():
 @auth_bp.get('/auth/refresh')
 def refresh_auth_token():
   refresh_token = request.cookies.get('refresh_token')
-  user_id = try_parse_token_user_id(refresh_token)
+  access_token = request.cookies.get('access_token')
 
-  if not user_id:
+  # Comparing credentials between both tokens
+  refresh_token_user_id = try_parse_token_user_id(refresh_token)
+  access_token_user_id = try_parse_token_user_id(access_token)
+
+  # Throw Unauthorized if user ID parsed from refresh token is null or if both IDs didn't match
+  if not refresh_token_user_id or refresh_token_user_id != access_token_user_id:
     raise Unauthorized()
 
   response = make_response('')
-  refresh_access_token_and_update_cookie(response, user_id)
+  refresh_access_token_and_update_cookie(response, refresh_token_user_id)
 
   return response

@@ -1,8 +1,12 @@
 import traceback
-from app import app
-from flask import jsonify
-from werkzeug.exceptions import HTTPException, Unauthorized, Forbidden
+
+from flask import jsonify, make_response
 from marshmallow import ValidationError
+from werkzeug.exceptions import HTTPException, Unauthorized, Forbidden
+
+from app import app
+from app.service.AuthService import clear_auth_cookies
+
 
 # Catch all unhandled exceptions
 @app.errorhandler(Exception)
@@ -29,7 +33,14 @@ def handle_http_exception(e: HTTPException):
   return jsonify(res), e.code
 
 @app.errorhandler(Unauthorized)
+def handle_auth_errors(e: Unauthorized ):
+  app.logger.error(e)
+  res = make_response('', e.code)
+  clear_auth_cookies(res)
+
+  return res
+
 @app.errorhandler(Forbidden)
-def handle_auth_errors(e: Unauthorized | Forbidden):
+def handle_auth_errors(e: Forbidden):
   app.logger.error(e)
   return '', e.code
