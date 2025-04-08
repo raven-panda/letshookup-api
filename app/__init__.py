@@ -1,13 +1,10 @@
 # Initialize app here
 import os
-from dotenv import load_dotenv
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_cors import CORS
 from flask_socketio import SocketIO
-
-load_dotenv()
 
 flask_env = os.getenv("FLASK_ENV")
 config_name = "app.config.DevConfig" if flask_env == "development" else "app.config.ProductionConfig" if flask_env == "production" else "app.config.TestConfig" if flask_env == "test" else None
@@ -26,7 +23,7 @@ db = SQLAlchemy(app)
 socketio = SocketIO(cors_allowed_origins=os.getenv("CORS_ACCEPTED_URI").split(','))
 socketio.init_app(app)
 
-from app import models, controllers, sockets
+from app import models, controllers, sockets, ExceptionMiddleware
 
 migrate = Migrate(app, db)
 
